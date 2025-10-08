@@ -38,4 +38,4 @@ I care about product impact, open source, and the intersection of code and creat
 
 ---
 
-📍 São Paulo, Brazil • [LinkedIn](https://linkedin.com/in/guilhermecalmeida) • guica.almeida@gmail.com
+📍 São Paulo, Brazil • [LinkedIn](https://linkedin.com/in/guilhermecalmeida) 
