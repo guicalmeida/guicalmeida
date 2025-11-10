@@ -7,14 +7,13 @@ I care about product impact, open source, and the intersection of code and creat
 ---
 
 ## Open Source
+**[TanStack Storefront](https://github.com/guicalmeida/tanstack-storefront)** – Production-ready e-commerce starter with Vendure integration. Based on Vendure's official Next.js storefront, this is storefront written with TanStack Start/Router/Form, featuring 100% inferred TypeScript, type-safe navigation, and complete auth/cart/checkout flows
 
 **[strapi-plugin-location](https://github.com/notum-cz/strapi-plugin-location/pull/198)** – Added reverse geocoding with PostGIS integration to Strapi CMS plugin
 
 **[Vendure Docs MCP Server](https://github.com/guicalmeida/vendure-docs-ingestor)** – AI-powered documentation retrieval using ChromaDB and semantic search. Built in <8 hours, approach validated by core team who developed their own version
 
 **[Querido Diário](https://github.com/okfn-brasil/querido-diario-frontend/pull/106)** – Civic tech: frontend fixes for Open Knowledge Brasil's platform that digitizes Brazilian government gazettes
-
-**[Prisma Docs](https://github.com/prisma/docs/pull/4442)** – Documentation maintenance
 
 ---
 
