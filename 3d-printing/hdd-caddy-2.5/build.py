@@ -45,44 +45,64 @@ base = to_mf(orig)
 # 1) remove a grade hexagonal do piso entre as paredes (frente e batentes ficam)
 base = base - box(XL, XR, Y_STOP, Y_FRONT, -1, FLOOR + 0.5)
 
-# 2) quadro minimo (z 0..2), sobrepondo 0.6 mm nas paredes
+# 2) quadro (z 0..2 sob o disco), sobrepondo 0.6 mm nas paredes
 o = 0.6
 T = FLOOR
 BW = 5.0                      # largura das travessas
+RIB_H = 5.0                   # altura das nervuras no vao direito (fora do disco)
+RIB_X0 = dx1 + 0.5            # nervuras so a direita do disco
+Y_FSTOP = Y_STOP + 100.45 + 0.15   # batente dianteiro (comprimento max. do 2.5")
 parts = []
-# travessas de largura total: A logo atras do recorte do conector, B passando
-# pelos furos dianteiros do disco, M e C para segurar as paredes no meio do vao
-YA = KEEP_OUT[2] + BW/2 + 0.25
-YB = (slots_y[1][0] + slots_y[1][1]) / 2
-for yc in (YA, 57.0, YB, 123.0):
+YA = KEEP_OUT[2] + BW/2 + 0.25                    # logo atras do recorte do conector
+YB = (slots_y[1][0] + slots_y[1][1]) / 2          # passa pelos furos dianteiros
+YD = Y_FSTOP + BW/2                               # segura o batente dianteiro
+cross = (YA, 57.0, YB, YD)
+for yc in cross:
     parts.append(box(XL - o, XR + o, yc - BW/2, yc + BW/2, 0, T))
-# abas laterais no lado direito do disco (localizam e aceitam parafuso lateral)
-TAB_X0 = dx1 + 0.25; TAB_X1 = TAB_X0 + 2.6; TAB_H = 9.0
+    # nervura vertical no vao direito (rigidez a flexao/torcao)
+    parts.append(box(RIB_X0, XR + o, yc - 1.0, yc + 1.0, 0, RIB_H))
+    # mao-francesa no plano, nas duas paredes
+    for xw, sx in ((XL, 1), (XR, -1)):
+        for sy in (1, -1):
+            tri = [(0, 0), (6 * sx, 0), (0, 6 * sy)]
+            g = mf.CrossSection([tri if sx * sy > 0 else tri[::-1]])
+            parts.append(mf.Manifold.extrude(g, T).translate([xw, yc + sy * BW/2, 0]))
+
+# ilhas em volta dos furos inferiores, ligadas a parede / travessas
 for ya, yb in slots_y:
-    parts.append(box(TAB_X0, TAB_X1, ya - 4.0, yb + 4.0, 0, TAB_H))
-# ilhas em volta dos oblongos, ligadas a parede / travessa / aba
-for ya, yb in slots_y:
-    y0, y1 = ya - 3.7, yb + 3.7
-    if ya < KEEP_OUT[2]:
-        y1 = max(y1, YA)       # liga as ilhas traseiras na travessa A
-    parts.append(box(XL - o, min(hole_x[0] + 4.6, KEEP_OUT[0]) if ya < KEEP_OUT[2]
-                     else hole_x[0] + 4.6, y0, y1, 0, T))
-    parts.append(box(hole_x[1] - 4.6, TAB_X1, y0, y1, 0, T))
-# diagonal unica contra paralelogramo (vao traseiro, lado direito)
-def bar(p0, p1, w):
+    y0, y1 = ya - 4.2, yb + 4.2
+    rear = ya < KEEP_OUT[2]
+    if rear:
+        y0, y1 = Y_STOP - 1.99, max(y1, YA)
+    parts.append(box(XL - o, (KEEP_OUT[0] + 1.0) if rear else hole_x[0] + 5.0, y0, y1, 0, T))
+    parts.append(box(hole_x[1] - 5.0, hole_x[1] + 5.0, y0, y1, 0, T))
+# batente traseiro do lado direito do disco (o original so encosta no esquerdo)
+parts.append(box(hole_x[1] - 5.0, dx1 - 0.5, Y_STOP - 1.99, Y_STOP, 0, FLOOR + 5.0))
+# batentes dianteiros: travam o disco quando o conector empurra no encaixe
+for xa, xb in ((XL - o, XL + 12.0), (dx1 - 16.0, dx1 + 2.0)):
+    parts.append(box(xa, xb, Y_FSTOP, Y_FSTOP + 3.0, 0, FLOOR + 4.0))
+# diagonais nervuradas no vao direito (contra paralelogramo)
+def bar(p0, p1, w, h):
     p0, p1 = np.array(p0), np.array(p1)
     v = p1 - p0; L = np.linalg.norm(v); a = np.degrees(np.arctan2(v[1], v[0]))
-    return box(0, L, -w/2, w/2, 0, T).rotate([0, 0, a]).translate([p0[0], p0[1], 0])
-parts.append(bar((TAB_X1 - 1, YA + 1), (XR + o - 1, 57.0 - 1), 4))
-parts.append(bar((TAB_X1 - 1, YB - 1), (XR + o - 1, 57.0 + 1), 4))
+    return box(0, L, -w/2, w/2, 0, h).rotate([0, 0, a]).translate([p0[0], p0[1], 0])
+for p0, p1 in (((RIB_X0 + 1, YA + 2), (XR, 57.0 - 2)),
+               ((RIB_X0 + 1, YB - 2), (XR, 57.0 + 2))):
+    parts.append(bar(p0, p1, 4.0, T))
 
 frame = mf.Manifold.batch_boolean(parts, mf.OpType.Add)
-cut = []
-for ya, yb in slots_y:
-    for hx in hole_x:
-        cut.append(zslot(hx, ya, yb, HOLE_D))
-    cut.append(ycyl_slot_x(TAB_X0 - 1, TAB_X1 + 1, ya, yb, FLOOR + 3.0, HOLE_D))
+# furos inferiores: oblongos escareados (parafuso M3 cabeca chata fica embutido,
+# nada sobra por baixo para raspar no cage)
+def csk_slot(x, ya, yb):
+    d0, d1 = 6.4, HOLE_D
+    cone = mf.Manifold.cylinder((d0 - d1) / 2, d0 / 2, d1 / 2, 48).translate([x, 0, -0.01])
+    thru = mf.Manifold.cylinder(T + 2, d1 / 2, d1 / 2, 48).translate([x, 0, -1])
+    one = cone + thru
+    return mf.Manifold.batch_hull([one.translate([0, ya, 0]), one.translate([0, yb, 0])])
+cut = [csk_slot(hx, ya, yb) for ya, yb in slots_y for hx in hole_x]
 frame = frame - mf.Manifold.batch_boolean(cut, mf.OpType.Add)
+# nada do quadro pode invadir o recorte do conector nem sair do envelope
+frame = frame - box(KEEP_OUT[0], KEEP_OUT[1], 0, KEEP_OUT[2], -1, 30)
 
 res = base + frame
 m = to_tm(res)
@@ -91,9 +111,9 @@ print('faces', len(m.faces), 'watertight', m.is_watertight,
       'vol cm3 %.2f (orig %.2f)' % (m.volume/1000, orig.volume/1000),
       'bounds', np.round(m.bounds, 2).tolist())
 # checagem: disco 2.5" (9.5 mm) nao colide com o modelo
-drive = box(dx0, dx1, Y_STOP, Y_STOP + L25, FLOOR, FLOOR + 9.5)
+drive = box(dx0 + .02, dx1 - .02, Y_STOP + .02, Y_STOP + L25 - .02, FLOOR + .02, FLOOR + 9.5)
 print('interferencia disco (mm3): %.3f' % (res ^ drive).volume())
-drive15 = box(dx0, dx1, Y_STOP, Y_STOP + L25, FLOOR, FLOOR + 15)
+drive15 = box(dx0 + .02, dx1 - .02, Y_STOP + .02, Y_STOP + 100.45 - .02, FLOOR + .02, FLOOR + 15)
 print('interferencia disco 15mm (mm3): %.3f' % (res ^ drive15).volume())
 # checagem: envelope externo identico fora do miolo do piso
 ob = orig.bounds; print('bounds iguais:', np.allclose(m.bounds, ob, atol=1e-3))
